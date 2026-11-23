@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>DECCAN CANVAS — Hyderabad Creative Map & Live Radar</title>
+  <meta name="description" content="The definitive interactive cartography of Hyderabad's creative underground, artisan roasteries, design studios, fashion ateliers, and cultural icons with direct contact dossiers.">
+  
+  <!-- Leaflet Vendored Assets -->
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <script src="vendor/leaflet/leaflet.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%230DA687'><polygon points='12 2 2 7 12 12 22 7 12 2'/><polyline points='2 17 12 22 22 17'/><polyline points='2 12 12 17 22 12'/></svg>">
+</head>
+<body>
+
+  <!-- ========================================================================
+       1. PRIVATE MEMBER AUTHENTICATION GATE
+       ======================================================================== -->
+  <div id="auth-gate">
+    <div class="auth-contour-canvas"></div>
+    <div class="auth-card">
+      <div class="auth-emblem">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+      </div>
+
+      <div class="auth-titles">
+        <h1 class="auth-title">DECCAN CANVAS</h1>
+        <p class="auth-subtitle">Private interactive cartography of Hyderabad’s creative underground, design studios &amp; artisan culture.</p>
+      </div>
+
+      <form id="auth-form" class="auth-form">
+        <div class="auth-input-group">
+          <label class="auth-label" for="auth-username">Username or Passkey</label>
+          <input type="text" id="auth-username" class="auth-input" placeholder="e.g. member or passkey" autocomplete="username" required autofocus>
+        </div>
+
+        <div class="auth-input-group">
+          <label class="auth-label" for="auth-password">Secret Password</label>
+          <input type="password" id="auth-password" class="auth-input" placeholder="••••••••••••" autocomplete="current-password">
+        </div>
+
+        <div id="auth-error" class="auth-error-msg"></div>
+
+        <button type="submit" class="auth-submit-btn">
+          <span>Enter Cartography</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
+        </button>
+      </form>
+
+      <div class="auth-hints-box">
+        <strong>Membership Credentials:</strong><br>
+        • Member: <code>member</code> &bull; Pass: <code>deccan2026</code><br>
+        • Curator: <code>curator</code> &bull; Pass: <code>charminar99</code><br>
+        • Or Instant Passkey: <code>HYD-CREATIVE-2026</code>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================
+       2. PRIMARY APP CONTAINER (Map + Floating HUD)
+       ======================================================================== -->
+  <div id="app-container">
+    <!-- Interactive Map Canvas -->
+    <div id="map"></div>
+
+    <!-- Topbar Navigation & Filter Strip -->
+    <div class="topbar-wrapper">
+      <header class="topbar">
+        <div class="brand-section">
+          <div class="brand-emblem">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+          </div>
+          <div class="brand-titles">
+            <div class="brand-name">
+              <span>DECCAN CANVAS</span>
+              <span class="brand-badge">HYD</span>
+            </div>
+            <div class="brand-sub">Hyderabad Creative Underground · 36 Mapped Nodes</div>
+          </div>
+        </div>
+
+        <!-- Quick Search Input -->
+        <div class="search-wrapper">
+          <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input type="text" id="search-input" class="search-input" placeholder="Search cafes, designers, founders, vibes (Press /)...">
+          <button id="search-clear" class="search-clear">&times;</button>
+        </div>
+
+        <!-- Topbar Actions -->
+        <div class="topbar-actions">
+          <button id="radar-toggle-btn" class="hud-btn radar-btn" title="Toggle Live Radar feed (Press R)">
+            <span class="radar-pulse-dot"></span>
+            <span id="radar-ticker-text">LIVE RADAR</span>
+          </button>
+
+          <button id="curator-toggle-btn" class="hud-btn" style="display: none;" title="Curator Studio: Add Places & Broadcast Drops">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+            <span>Curator Studio</span>
+          </button>
+
+          <span id="user-role-badge" class="brand-badge" style="cursor: default;">MEMBER</span>
+
+          <button id="lock-btn" class="hud-btn" title="Lock Cartography">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Area Jump Bar -->
+      <div class="filter-strip">
+        <button class="area-pill active" data-zone="all">🌐 All Hyderabad</button>
+        <button class="area-pill" data-zone="jubilee-banjara">☕ Jubilee &amp; Banjara Hills</button>
+        <button class="area-pill" data-zone="madhapur-hitec">🎨 Madhapur &amp; Hitec City</button>
+        <button class="area-pill" data-zone="gachibowli-financial">🏢 Gachibowli &amp; Financial Dist</button>
+        <button class="area-pill" data-zone="begumpet-central">🥖 Begumpet &amp; Somajiguda</button>
+        <button class="area-pill" data-zone="secunderabad-sainikpuri">🌿 Sainikpuri &amp; Secunderabad</button>
+        <button class="area-pill" data-zone="old-city-charminar">🏛️ Old City &amp; Charminar</button>
+        <button class="area-pill" data-zone="gandipet-lakefront">🌊 Gandipet &amp; Kokapet</button>
+      </div>
+
+      <!-- Category Filter Bar -->
+      <div class="filter-strip" style="margin-top: -2px;">
+        <button class="cat-pill active" data-cat="all">All Disciplines <span id="visible-count" class="count">36</span></button>
+        <button class="cat-pill" data-cat="cafe">☕ Artisan Cafes &amp; Roasteries</button>
+        <button class="cat-pill" data-cat="design_studio">📐 Design Studios &amp; Architecture</button>
+        <button class="cat-pill" data-cat="brand_fashion">👗 Haute Ateliers &amp; Brands</button>
+        <button class="cat-pill" data-cat="art_culture">🖼️ Contemporary Art &amp; Culture</button>
+        <button class="cat-pill" data-cat="coworking_maker">⚡ Creative Labs &amp; Ceramics</button>
+        <button class="cat-pill" data-cat="heritage_icon">🏛️ Heritage Icons &amp; Scents</button>
+      </div>
+    </div>
+
+    <!-- ======================================================================
+         3. DEEP DOSSIER INSPECTION DRAWER (Right Slide-over)
+         ====================================================================== -->
+    <aside id="dossier-drawer" class="dossier-drawer" aria-label="Venue Dossier">
+      <div class="dossier-header">
+        <button id="dossier-close-btn" class="dossier-close-btn" title="Close Dossier (Esc)">&times;</button>
+        <div class="dossier-tag-row">
+          <span id="dossier-category" class="category-tag">Artisan Cafe</span>
+          <span id="dossier-price" class="price-tag">₹₹</span>
+          <span id="dossier-status" class="status-badge">Open for Collabs</span>
+        </div>
+        <h2 id="dossier-title" class="dossier-title">Roastery Coffee House</h2>
+        <p id="dossier-tagline" class="dossier-tagline">Pioneering Indian single-origin estate coffee in a cascading brick heritage bungalow.</p>
+      </div>
+
+      <div class="dossier-body">
+        <!-- Live Drop Card (if active) -->
+        <div id="dossier-live-drop-card" class="dossier-live-drop">
+          <div class="live-drop-meta">
+            <span id="drop-card-badge" class="drop-badge">NEW ROAST DROP</span>
+            <span id="drop-card-time" class="drop-time">42m ago</span>
+          </div>
+          <div id="drop-card-title" class="drop-title">Araku Valley Microlot Series</div>
+          <div id="drop-card-snippet" class="drop-snippet">Fresh anaerobic fermentation batch from Chintapalli Estate on siphon bar.</div>
+        </div>
+
+        <!-- Person of Contact Matrix -->
+        <div class="dossier-section">
+          <div class="dossier-section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <span>Verified Contact Dossier</span>
+          </div>
+
+          <div class="contact-dossier-card">
+            <div class="contact-person-meta">
+              <div id="contact-avatar-text" class="contact-avatar">NS</div>
+              <div class="contact-names">
+                <span id="contact-person-name" class="contact-name">Nishant Sinha</span>
+                <span id="contact-person-role" class="contact-role">Founder &amp; Master Roaster</span>
+              </div>
+            </div>
+
+            <!-- Direct Contact Actions Grid -->
+            <div class="contact-actions-grid">
+              <a id="contact-action-whatsapp" class="contact-action-btn whatsapp" href="#" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.312.045-.698.077-2.203-.548-1.745-.724-2.881-2.483-2.969-2.6-.086-.118-.707-.941-.707-1.796 0-.854.448-1.275.607-1.448.16-.172.347-.216.464-.216.115 0 .232.002.332.007.108.004.252-.041.394.301.144.35.493 1.205.536 1.292.043.088.072.19.014.305-.058.115-.088.19-.175.291-.087.102-.183.228-.261.306-.087.086-.179.18-.077.355.101.175.449.741.964 1.201.662.591 1.221.774 1.394.86.173.086.274.072.376-.044.103-.116.435-.506.551-.68.115-.173.231-.144.39-.086.159.058 1.011.477 1.184.564.173.087.289.129.332.202.043.073.043.423-.101.828z"/></svg>
+                <span>WhatsApp</span>
+              </a>
+
+              <a id="contact-action-call" class="contact-action-btn call" href="#">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+                <span>Call Directly</span>
+              </a>
+
+              <a id="contact-action-email" class="contact-action-btn email" href="#">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                <span>Send Email</span>
+              </a>
+
+              <a id="contact-action-insta" class="contact-action-btn instagram" href="#" target="_blank">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                <span>Instagram</span>
+              </a>
+            </div>
+
+            <!-- Secondary Person (if present) -->
+            <div class="contact-secondary-row" style="display: none;">
+              <span id="contact-secondary-person">Events: Priya Sharma</span>
+            </div>
+
+            <!-- Utilities: Copy All & vCard -->
+            <div class="contact-secondary-row">
+              <button id="copy-contact-btn" class="copy-vcard-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                <span>Copy Contact Details</span>
+              </button>
+
+              <button id="download-vcard-btn" class="copy-vcard-btn">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <span>Save vCard (.vcf)</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- About Prose -->
+        <div class="dossier-section">
+          <div class="dossier-section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <span>The Space &amp; Ethos</span>
+          </div>
+          <p id="dossier-about-text" class="dossier-prose"></p>
+        </div>
+
+        <!-- Insider Tip Box -->
+        <div class="insider-tip-box">
+          <div class="insider-tip-header">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+            <span>Insider Tip / Secret Order</span>
+          </div>
+          <p id="dossier-tip-text" class="insider-tip-body"></p>
+        </div>
+
+        <!-- Vibe Tags -->
+        <div class="dossier-section">
+          <div class="dossier-section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+            <span>Atmospheric Signature</span>
+          </div>
+          <div id="dossier-vibe-tags" class="vibe-tags-cloud"></div>
+        </div>
+
+        <!-- Details & Location -->
+        <div class="dossier-section">
+          <div class="dossier-section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+            <span>Hours &amp; Location</span>
+          </div>
+
+          <div class="dossier-meta-list">
+            <div class="meta-row">
+              <span class="meta-icon">📍</span>
+              <span class="meta-label">Address:</span>
+              <span id="dossier-address-text" class="meta-val"></span>
+            </div>
+
+            <div class="meta-row">
+              <span class="meta-icon">⏰</span>
+              <span class="meta-label">Hours:</span>
+              <span id="dossier-hours-text" class="meta-val"></span>
+            </div>
+
+            <div class="meta-row">
+              <span class="meta-icon">⚡</span>
+              <span class="meta-label">Peak Vibe:</span>
+              <span id="dossier-peak-text" class="meta-val"></span>
+            </div>
+
+            <!-- Navigation Links -->
+            <div style="display: flex; gap: 8px; margin-top: 6px;">
+              <a id="directions-google-maps" href="#" class="hud-btn" style="flex: 1; justify-content: center; font-size: 11px;">
+                <span>Google Maps</span> &rarr;
+              </a>
+              <a id="directions-apple-maps" href="#" class="hud-btn" style="flex: 1; justify-content: center; font-size: 11px;">
+                <span>Apple Maps</span> &rarr;
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Amenities -->
+        <div class="dossier-section">
+          <div class="dossier-section-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"></polyline><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+            <span>Amenities &amp; Work Readiness</span>
+          </div>
+          <div id="dossier-amenities" class="vibe-tags-cloud"></div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ======================================================================
+         4. LIVE RADAR DRAWER (Left Slide-over Feed)
+         ====================================================================== -->
+    <aside id="radar-drawer" class="radar-drawer" aria-label="Live Radar Feed">
+      <div class="radar-header">
+        <div class="radar-header-titles">
+          <div class="radar-title">
+            <span class="radar-pulse-dot"></span>
+            <span>DECCAN RADAR</span>
+          </div>
+          <div class="radar-sub">Dynamic creative feed updated every 60m from Insta, X &amp; Wire</div>
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <button id="radar-refresh-btn" class="hud-btn" style="padding: 0 10px;" title="Refresh Radar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
+          <button id="radar-close-btn" class="dossier-close-btn">&times;</button>
+        </div>
+      </div>
+
+      <div id="radar-feed-list" class="radar-feed-list">
+        <!-- Injected via radar.js -->
+      </div>
+    </aside>
+
+    <!-- ======================================================================
+         5. CURATOR STUDIO MODAL
+         ====================================================================== -->
+    <div id="curator-modal" class="curator-modal-backdrop">
+      <div class="curator-card">
+        <div class="curator-header">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="brand-badge" style="color: var(--accent-heritage); border-color: rgba(245, 158, 26, 0.4);">CURATOR MODE</span>
+            <h3 style="font-size: 16px; font-weight: 700;">Deccan Studio Studio</h3>
+          </div>
+          <button id="curator-close-btn" class="dossier-close-btn">&times;</button>
+        </div>
+
+        <!-- Curator Tabs -->
+        <div class="filter-strip" style="padding: 10px 22px; border-bottom: 1px solid var(--border-subtle);">
+          <button class="area-pill curator-tab-btn active" data-tab="tab-add-place">+ Map New Venue</button>
+          <button class="area-pill curator-tab-btn" data-tab="tab-broadcast-drop">📡 Broadcast Live Drop</button>
+          <button id="curator-export-db-btn" class="area-pill" style="margin-left: auto;">💾 Export JSON</button>
+        </div>
+
+        <div class="curator-body">
+          <!-- Tab 1: Add Place Form -->
+          <form id="curator-add-place-form" class="curator-tab-content" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="auth-input-group">
+                <label class="auth-label">Venue Name</label>
+                <input type="text" id="new-place-name" class="auth-input" placeholder="e.g. Subko Cafe" required>
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-label">Category</label>
+                <select id="new-place-category" class="auth-input" style="height: 44px; padding: 0 10px;">
+                  <option value="cafe">Artisan Cafe &amp; Roastery</option>
+                  <option value="design_studio">Design Studio &amp; Architecture</option>
+                  <option value="brand_fashion">Haute Atelier &amp; Brand</option>
+                  <option value="art_culture">Contemporary Art &amp; Culture</option>
+                  <option value="coworking_maker">Creative Lab &amp; Ceramics</option>
+                  <option value="heritage_icon">Heritage Icon &amp; Craft</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-label">Tagline (One-line aesthetic punch)</label>
+              <input type="text" id="new-place-tagline" class="auth-input" placeholder="e.g. Japanese minimalist pour-over in a sunlit bungalow.">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="auth-input-group">
+                <label class="auth-label">Neighborhood</label>
+                <input type="text" id="new-place-neighborhood" class="auth-input" placeholder="e.g. Jubilee Hills" required>
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-label">Zone</label>
+                <select id="new-place-zone" class="auth-input" style="height: 44px; padding: 0 10px;">
+                  <option value="jubilee-banjara">Jubilee &amp; Banjara Hills</option>
+                  <option value="madhapur-hitec">Madhapur &amp; Hitec City</option>
+                  <option value="gachibowli-financial">Gachibowli &amp; Financial Dist</option>
+                  <option value="begumpet-central">Begumpet &amp; Somajiguda</option>
+                  <option value="secunderabad-sainikpuri">Sainikpuri &amp; Secunderabad</option>
+                  <option value="old-city-charminar">Old City &amp; Charminar</option>
+                  <option value="gandipet-lakefront">Gandipet &amp; Kokapet</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-label">Full Street Address</label>
+              <input type="text" id="new-place-address" class="auth-input" placeholder="Street, road, landmark...">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="auth-input-group">
+                <label class="auth-label">Latitude</label>
+                <input type="number" step="0.0001" id="new-place-lat" class="auth-input" placeholder="17.4300" required>
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-label">Longitude</label>
+                <input type="number" step="0.0001" id="new-place-lng" class="auth-input" placeholder="78.4100" required>
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="auth-input-group">
+                <label class="auth-label">Person of Contact</label>
+                <input type="text" id="new-place-person" class="auth-input" placeholder="Name">
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-label">Role</label>
+                <input type="text" id="new-place-role" class="auth-input" placeholder="e.g. Founder &amp; Roaster">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="auth-input-group">
+                <label class="auth-label">Phone / WhatsApp</label>
+                <input type="text" id="new-place-phone" class="auth-input" placeholder="+91 98...">
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-label">Email</label>
+                <input type="email" id="new-place-email" class="auth-input" placeholder="hello@...">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="auth-input-group">
+                <label class="auth-label">Instagram</label>
+                <input type="text" id="new-place-insta" class="auth-input" placeholder="@handle">
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-label">Website</label>
+                <input type="url" id="new-place-website" class="auth-input" placeholder="https://...">
+              </div>
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-label">Vibe Tags (Comma-separated)</label>
+              <input type="text" id="new-place-vibes" class="auth-input" placeholder="Specialty Coffee, Outdoor, Wi-Fi">
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-label">About the Space</label>
+              <textarea id="new-place-about" class="auth-input" style="height: 60px; padding: 10px;" placeholder="Describe the creative contribution and interior vibe..."></textarea>
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-label">Insider Tip</label>
+              <input type="text" id="new-place-tip" class="auth-input" placeholder="Secret dish, best seat, or timing...">
+            </div>
+
+            <button type="submit" class="auth-submit-btn" style="margin-top: 6px;">Add Venue to Deccan Canvas</button>
+          </form>
+
+          <!-- Tab 2: Broadcast Live Drop Form -->
+          <form id="curator-broadcast-form" class="curator-tab-content" style="display: none; flex-direction: column; gap: 12px;">
+            <div class="auth-input-group">
+              <label class="auth-label">Select Venue</label>
+              <select id="drop-venue-select" class="auth-input" style="height: 44px; padding: 0 10px;"></select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <div class="auth-input-group">
+                <label class="auth-label">Source</label>
+                <select id="drop-source" class="auth-input" style="height: 44px; padding: 0 10px;">
+                  <option value="Instagram Drop">Instagram Drop</option>
+                  <option value="Twitter / X Dispatch">Twitter / X Dispatch</option>
+                  <option value="Curator Scoop">Curator Scoop</option>
+                  <option value="Deccan Creative Wire">Deccan Creative Wire</option>
+                </select>
+              </div>
+              <div class="auth-input-group">
+                <label class="auth-label">Badge Tag</label>
+                <select id="drop-badge" class="auth-input" style="height: 44px; padding: 0 10px;">
+                  <option value="LIVE DROP">LIVE DROP</option>
+                  <option value="SECRET MENU">SECRET MENU</option>
+                  <option value="EXHIBITION">EXHIBITION</option>
+                  <option value="WEEKEND POPUP">WEEKEND POPUP</option>
+                  <option value="DESIGN TALK">DESIGN TALK</option>
+                  <option value="NEW ROAST DROP">NEW ROAST DROP</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-label">Headline</label>
+              <input type="text" id="drop-headline" class="auth-input" placeholder="e.g. Flash Pop-up with Ceramicist Anand Koppa" required>
+            </div>
+
+            <div class="auth-input-group">
+              <label class="auth-label">Body / Scoop Details</label>
+              <textarea id="drop-body" class="auth-input" style="height: 80px; padding: 10px;" placeholder="Full details of what is happening, timings, and RSVP..." required></textarea>
+            </div>
+
+            <button type="submit" class="auth-submit-btn" style="background: linear-gradient(135deg, #F59E1A 0%, #D97706 100%);">
+              Broadcast to Live Radar Feed
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="js/auth.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/dossier.js"></script>
+  <script src="js/radar.js"></script>
+  <script src="js/curator.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
