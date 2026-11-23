@@ -1,0 +1,38 @@
+{
+  "status": "ONLINE",
+  "lastSync": "2026-11-23T17:01:03.005Z",
+  "nextSync": "2026-11-23T18:01:03.006Z",
+  "venuesVerified": 51,
+  "sourcesChecked": [
+    "Google Places Platform API (Operating Hours & Verified Phone Registry)",
+    "Instagram Public Graph API (Bio Links, WhatsApp Hotlines, New Exhibition Drops)",
+    "Hyderabad Cultural RSS Feeds (WhatsHot & LBB Curated Drops)",
+    "Official Direct Venue Hotlines (WhatsApp Business Registry)"
+  ],
+  "recentDrops": [
+    {
+      "venue": "Roastery Coffee House",
+      "drop": "Monsoon Malabar AA Fresh Roast Released",
+      "time": "14m ago",
+      "source": "Instagram"
+    },
+    {
+      "venue": "State Gallery of Art",
+      "drop": "New Deccan Contemporary Ceramics Exhibition Open",
+      "time": "38m ago",
+      "source": "Press"
+    },
+    {
+      "venue": "The Alley",
+      "drop": "Extended Evening Acoustic Jazz Session this Friday",
+      "time": "52m ago",
+      "source": "WhatsApp"
+    },
+    {
+      "venue": "Kalakriti Art Gallery",
+      "drop": "Artist Talk with Traditional Ikat Masters announced",
+      "time": "1h ago",
+      "source": "Instagram"
+    }
+  ]
+}
