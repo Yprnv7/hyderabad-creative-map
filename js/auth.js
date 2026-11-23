@@ -1,32 +1,34 @@
 /* ==========================================================================
    DECCAN CANVAS — Authentication & Session Manager
-   Supports Member Access & Curator Roles with Local Persistence
+   Case-Insensitive Usernames & Protected Member/Curator Access
    ========================================================================== */
 
 const AuthManager = (() => {
-  const STORAGE_KEY = 'deccan_canvas_auth';
+  const STORAGE_KEY = 'deccan_canvas_auth_session';
   
-  // Valid Credentials Matrix
+  // Authorized Users (Usernames are strictly case-insensitive)
   const CREDENTIALS = {
-    'member': {
-      password: 'deccan2026',
-      role: 'member',
-      label: 'Creative Member'
+    'gowri': {
+      password: 'M@rcus',
+      role: 'curator',
+      label: 'Gowri'
+    },
+    'abhinav': {
+      password: 'M@@ngini',
+      role: 'curator',
+      label: 'Abhinav'
     },
     'curator': {
       password: 'charminar99',
       role: 'curator',
       label: 'Deccan Curator'
     },
-    'founder': {
-      password: 'jubileehills',
-      role: 'curator',
-      label: 'Studio Founder'
+    'member': {
+      password: 'deccan2026',
+      role: 'member',
+      label: 'Creative Member'
     }
   };
-  
-  // Single passkey shortcuts
-  const PASSKEYS = ['HYD-CREATIVE-2026', 'CHARMINAR99', 'DECCAN2026'];
 
   function checkSession() {
     try {
@@ -44,23 +46,11 @@ const AuthManager = (() => {
     }
   }
 
-  function login(usernameOrPasskey, password = '') {
-    const cleanUser = (usernameOrPasskey || '').trim().toLowerCase();
+  function login(username, password) {
+    // Normalizes username to lowercase for case-insensitivity
+    const cleanUser = (username || '').trim().toLowerCase();
     const cleanPass = (password || '').trim();
 
-    // Check passkey first
-    const upperPasskey = (usernameOrPasskey || '').trim().toUpperCase();
-    if (PASSKEYS.includes(upperPasskey)) {
-      const session = {
-        username: 'member_passkey',
-        role: upperPasskey === 'CHARMINAR99' ? 'curator' : 'member',
-        loginTime: Date.now()
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-      return { success: true, session };
-    }
-
-    // Check username & password
     const record = CREDENTIALS[cleanUser];
     if (record && record.password === cleanPass) {
       const session = {
@@ -75,7 +65,7 @@ const AuthManager = (() => {
 
     return { 
       success: false, 
-      error: 'Invalid credentials. Use member / deccan2026 or curator / charminar99.' 
+      error: 'Invalid username or password. Please verify your credentials.' 
     };
   }
 
@@ -86,6 +76,8 @@ const AuthManager = (() => {
       gate.classList.remove('unlocked');
       const errorMsg = document.getElementById('auth-error');
       if (errorMsg) errorMsg.classList.remove('visible');
+      const passInput = document.getElementById('auth-password');
+      if (passInput) passInput.value = '';
     }
   }
 
@@ -102,7 +94,7 @@ const AuthManager = (() => {
     // Check existing valid session
     const existing = checkSession();
     if (existing) {
-      gate.classList.add('unlocked');
+      if (gate) gate.classList.add('unlocked');
       updateUserBadge(existing);
       if (typeof onUnlockCallback === 'function') onUnlockCallback(existing);
     }
@@ -115,32 +107,37 @@ const AuthManager = (() => {
         const res = login(user, pass);
 
         if (res.success) {
-          gate.classList.add('unlocked');
-          errorMsg.classList.remove('visible');
+          if (gate) gate.classList.add('unlocked');
+          if (errorMsg) errorMsg.classList.remove('visible');
           updateUserBadge(res.session);
           if (typeof onUnlockCallback === 'function') onUnlockCallback(res.session);
         } else {
-          errorMsg.textContent = res.error;
-          errorMsg.classList.add('visible');
-          passInput.value = '';
-          passInput.focus();
+          if (errorMsg) {
+            errorMsg.textContent = res.error;
+            errorMsg.classList.add('visible');
+          }
+          if (passInput) {
+            passInput.value = '';
+            passInput.focus();
+          }
         }
       });
     }
 
     if (lockBtn) {
-      lockBtn.addEventListener('click', () => {
+      lockBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         logout();
       });
     }
 
     function updateUserBadge(session) {
       if (userBadge) {
-        userBadge.textContent = session.role === 'curator' ? 'CURATOR' : 'MEMBER';
-        userBadge.style.color = session.role === 'curator' ? 'var(--accent-heritage)' : 'var(--accent-cafe)';
+        userBadge.textContent = (session.label || session.username).toUpperCase();
+        userBadge.style.color = 'rgb(var(--c-yellow))';
       }
       if (curatorBtn) {
-        curatorBtn.style.display = session.role === 'curator' ? 'flex' : 'none';
+        curatorBtn.style.display = session.role === 'curator' ? 'inline-flex' : 'none';
       }
     }
   }

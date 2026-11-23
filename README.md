@@ -58,14 +58,18 @@ For every single mapped venue, Deccan Canvas provides an exhaustive, verified do
 - **Direct Venue Linking**: Clicking any radar drop immediately flies to the venue on the map and opens its dossier.
 
 ### 4. 🔒 Private Member Authentication Gate & Curator Studio
-- **Atmospheric Lockscreen**: Bespoke dark velvet modal with topographic contours.
-- **Role-Based Access**:
-  - **Member Access**:
-    - Username: `member` &bull; Password: `deccan2026`
-    - Or Instant Passkey: `HYD-CREATIVE-2026`
-  - **Curator Mode**:
-    - Username: `curator` &bull; Password: `charminar99`
-    - Unlocks the **Curator Studio** to map new venues on the fly, broadcast live drops to the radar feed, and export JSON backups.
+- **Minimalist Pure Black Gate**: Zero hints or credentials displayed on the landing page for maximum exclusivity and security.
+- **Case-Insensitive User Authentication**:
+  - **User 1**: `gowri` &bull; Password: `M@rcus`
+  - **User 2**: `abhinav` &bull; Password: `M@@ngini`
+  - *(Usernames can be entered in any case: `Gowri`, `GOWRI`, `Abhinav`, `ABHINAV`)*
+  - **Curator Access**: `curator` &bull; Password: `charminar99`
+  - Unlocks full access to the cartography, verified contact dossiers, live radar, and in-app Curator Studio.
+
+### 5. 🗺️ Dual Engine: Google Maps Platform & Dark Canvas
+- **Google Maps API**: Built-in support for Google Maps JavaScript API with customized La Gata Perduda dark monochrome styling.
+- **Dark Canvas Fallback**: Rock-solid CartoDB Dark Matter tile fallback ensuring zero downtime even without an API key or when offline.
+- **Deep Directions**: Every venue dossier includes direct 1-click links for Google Maps navigation (`google.com/maps/search/?api=1...`), Apple Maps, and embedded interactive Google Maps location previews.
 
 ---
 

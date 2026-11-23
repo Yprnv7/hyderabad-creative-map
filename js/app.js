@@ -19,8 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // 2. Initialize Map Engine
       window.MapEngine.init(places);
 
-      // 3. Initialize Dossier
-      window.DossierManager.init();
+      // 3. Initialize Dossier Modal
+      if (window.DossierModal) window.DossierModal.init();
 
       // 4. Initialize Radar
       window.RadarManager.init();

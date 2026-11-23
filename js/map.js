@@ -1,18 +1,22 @@
 /* ==========================================================================
-   DECCAN CANVAS — Map Engine & Custom Cartography
-   Leaflet Dark Matter Canvas, Glowing SVG Radar Nodes & Spring Navigation
+   DECCAN CANVAS — Map Engine
+   Styling: Exactly matching https://lagataperduda.com/en/mapa/
+   Dual-Engine Architecture: Google Maps API + Dark Matter Fallback
    ========================================================================== */
 
 const MapEngine = (() => {
   let map = null;
+  let googleMap = null;
   let markersLayer = null;
   let allPlaces = [];
   let activePlaceId = null;
-  let activeFilter = 'all';
+  let activeCategories = new Set(['cafe', 'heritage_icon', 'design_studio', 'art_culture', 'brand_fashion', 'coworking_maker']);
   let activeZone = 'all';
   let searchQuery = '';
+  let currentEngine = 'leaflet'; // 'leaflet' or 'google'
+  let googleMarkers = [];
 
-  // Hyderabad Geographic Presets
+  // Hyderabad Presets
   const ZONE_PRESETS = {
     'all': { coords: [17.4150, 78.4250], zoom: 12 },
     'jubilee-banjara': { coords: [17.4300, 78.4200], zoom: 14 },
@@ -24,20 +28,116 @@ const MapEngine = (() => {
     'gandipet-lakefront': { coords: [17.3850, 78.3050], zoom: 13.5 }
   };
 
-  // Category SVGs
-  const CATEGORY_SVGS = {
-    cafe: `<svg class="pin-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>`,
-    heritage_icon: `<svg class="pin-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18"></path><path d="M5 21V7l7-4 7 4v14"></path><path d="M9 10a3 3 0 0 1 6 0v11H9V10z"></path></svg>`,
-    design_studio: `<svg class="pin-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>`,
-    art_culture: `<svg class="pin-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`,
-    brand_fashion: `<svg class="pin-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"></circle><circle cx="6" cy="18" r="3"></circle><line x1="20" y1="4" x2="8.12" y2="15.88"></line><line x1="14.47" y1="14.48" x2="20" y2="20"></line><line x1="8.12" y1="8.12" x2="12" y2="12"></line></svg>`,
-    coworking_maker: `<svg class="pin-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`
+  // La Gata Perduda Category Color Map
+  const CATEGORY_COLORS = {
+    cafe: 'var(--c-green)',
+    heritage_icon: 'var(--c-yellow)',
+    design_studio: 'var(--c-orange)',
+    art_culture: 'var(--c-blue)',
+    brand_fashion: 'var(--c-pink)',
+    coworking_maker: 'var(--c-purple)'
   };
+
+  // La Gata Perduda Google Maps Dark Style Array
+  const GOOGLE_MAPS_DARK_STYLE = [
+    { elementType: 'geometry', stylers: [{ color: '#000000' }] },
+    { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+    { elementType: 'labels.text.fill', stylers: [{ color: '#777777' }] },
+    { elementType: 'labels.text.stroke', stylers: [{ color: '#000000' }] },
+    { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#222222' }] },
+    { featureType: 'administrative.country', elementType: 'geometry.stroke', stylers: [{ color: '#333333' }] },
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#111111' }] },
+    { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1a1a1a' }] },
+    { featureType: 'road.highway', elementType: 'geometry.fill', stylers: [{ color: '#1c1c1c' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a0a0a' }] }
+  ];
 
   function init(placesData) {
     allPlaces = placesData;
 
-    // Initialize Map with custom coordinates & options
+    // Check if Google Maps API key is configured
+    const gmapsKey = getGoogleMapsApiKey();
+    if (gmapsKey) {
+      loadGoogleMapsScript(gmapsKey);
+    } else {
+      initLeafletMap();
+    }
+
+    bindFilterEvents();
+    renderMarkers();
+  }
+
+  function getGoogleMapsApiKey() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('gmaps_key') || localStorage.getItem('gmaps_api_key') || '';
+  }
+
+  function setGoogleMapsApiKey(key) {
+    if (key) {
+      localStorage.setItem('gmaps_api_key', key);
+      loadGoogleMapsScript(key);
+    } else {
+      localStorage.removeItem('gmaps_api_key');
+      switchToLeaflet();
+    }
+  }
+
+  function loadGoogleMapsScript(key) {
+    if (window.google && window.google.maps) {
+      initGoogleMapInstance();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}&callback=MapEngine.onGoogleMapsLoaded`;
+    script.async = true;
+    script.defer = true;
+    script.onerror = () => {
+      console.warn('Google Maps API script error. Falling back to Dark Matter tiles.');
+      initLeafletMap();
+    };
+    document.head.appendChild(script);
+  }
+
+  function onGoogleMapsLoaded() {
+    initGoogleMapInstance();
+  }
+
+  function initGoogleMapInstance() {
+    try {
+      const mapEl = document.getElementById('map');
+      if (!mapEl) return;
+      currentEngine = 'google';
+
+      const center = ZONE_PRESETS.all.coords;
+      googleMap = new google.maps.Map(mapEl, {
+        center: { lat: center[0], lng: center[1] },
+        zoom: ZONE_PRESETS.all.zoom,
+        styles: GOOGLE_MAPS_DARK_STYLE,
+        disableDefaultUI: true,
+        zoomControl: true,
+        backgroundColor: '#000000'
+      });
+
+      renderMarkers();
+      updateEngineBadge();
+    } catch (e) {
+      console.warn('Could not initialize Google Map, falling back to Leaflet:', e);
+      initLeafletMap();
+    }
+  }
+
+  function initLeafletMap() {
+    currentEngine = 'leaflet';
+    const mapEl = document.getElementById('map');
+    if (!mapEl) return;
+
+    if (map) {
+      map.remove();
+      map = null;
+    }
+
     map = L.map('map', {
       center: ZONE_PRESETS.all.coords,
       zoom: ZONE_PRESETS.all.zoom,
@@ -46,25 +146,22 @@ const MapEngine = (() => {
       zoomControl: true
     });
 
-    // Dark Matter Tiles
+    // Pure Dark Matter Tiles matching La Gata Perduda aesthetic
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://openstreetmap.org">OSM</a> | Deccan Canvas Hyderabad',
+      attribution: '&copy; CARTO &copy; OpenStreetMap | Deccan Canvas',
       subdomains: 'abcd',
       maxZoom: 19
     }).addTo(map);
 
     markersLayer = L.layerGroup().addTo(map);
-
     renderMarkers();
-    bindEvents();
+    updateEngineBadge();
   }
 
   function renderMarkers() {
-    markersLayer.clearLayers();
-
     const filtered = allPlaces.filter(place => {
       // Category filter
-      if (activeFilter !== 'all' && place.category !== activeFilter) return false;
+      if (!activeCategories.has(place.category)) return false;
 
       // Zone filter
       if (activeZone !== 'all' && place.zone !== activeZone) return false;
@@ -76,8 +173,7 @@ const MapEngine = (() => {
         const matchNeigh = place.neighborhood.toLowerCase().includes(q);
         const matchVibe = place.vibe_tags.some(v => v.toLowerCase().includes(q));
         const matchContact = (place.contacts.primary_person || '').toLowerCase().includes(q);
-        const matchTagline = (place.tagline || '').toLowerCase().includes(q);
-        if (!matchName && !matchNeigh && !matchVibe && !matchContact && !matchTagline) {
+        if (!matchName && !matchNeigh && !matchVibe && !matchContact) {
           return false;
         }
       }
@@ -85,48 +181,87 @@ const MapEngine = (() => {
       return true;
     });
 
+    if (currentEngine === 'google' && googleMap) {
+      renderGoogleMarkers(filtered);
+    } else if (map && markersLayer) {
+      renderLeafletMarkers(filtered);
+    }
+
+    updateCount(filtered.length);
+  }
+
+  function renderLeafletMarkers(filtered) {
+    markersLayer.clearLayers();
+
     filtered.forEach(place => {
-      const svgIcon = CATEGORY_SVGS[place.category] || CATEGORY_SVGS.cafe;
+      const colorVar = CATEGORY_COLORS[place.category] || 'var(--c-green)';
       const isActive = place.id === activePlaceId;
 
       const markerHtml = `
-        <div class="pin-bubble ${place.category} ${isActive ? 'active' : ''}" data-id="${place.id}">
-          <div class="pin-beacon"></div>
-          ${svgIcon}
+        <div class="lgp-node ${isActive ? 'active' : ''}" style="--c-node: ${colorVar};" data-id="${place.id}">
+          <div class="lgp-node-core"></div>
         </div>
       `;
 
       const customIcon = L.divIcon({
         html: markerHtml,
-        className: 'custom-map-pin',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
+        className: 'lgp-pin',
+        iconSize: [28, 28],
+        iconAnchor: [14, 14]
       });
 
       const marker = L.marker([place.coordinates.lat, place.coordinates.lng], { icon: customIcon });
 
-      // Tooltip
-      const tooltipContent = `
-        <div class="custom-pin-tooltip">
-          <div class="tooltip-title">${place.name}</div>
-          <div class="tooltip-sub">${place.neighborhood} · ${place.category_label}</div>
+      const tooltipHtml = `
+        <div class="lgp-tooltip">
+          <div class="lgp-tooltip-title">${place.name}</div>
+          <div class="lgp-tooltip-sub">${place.neighborhood} &bull; ${place.category_label}</div>
         </div>
       `;
-      marker.bindTooltip(tooltipContent, {
+      marker.bindTooltip(tooltipHtml, {
         direction: 'top',
-        offset: [0, -14],
+        offset: [0, -10],
         opacity: 1
       });
 
-      // Click opens Dossier
       marker.on('click', () => {
         selectPlace(place.id, true);
       });
 
       markersLayer.addLayer(marker);
     });
+  }
 
-    updateCounters(filtered.length);
+  function renderGoogleMarkers(filtered) {
+    googleMarkers.forEach(m => m.setMap(null));
+    googleMarkers = [];
+
+    filtered.forEach(place => {
+      const colorVar = CATEGORY_COLORS[place.category] || 'rgb(var(--c-green))';
+      const marker = new google.maps.Marker({
+        position: { lat: place.coordinates.lat, lng: place.coordinates.lng },
+        map: googleMap,
+        title: place.name,
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 9,
+          fillColor: '#000000',
+          fillOpacity: 1,
+          strokeColor: place.category === 'cafe' ? '#a0c29e' :
+                       place.category === 'heritage_icon' ? '#f8d180' :
+                       place.category === 'design_studio' ? '#d6772f' :
+                       place.category === 'art_culture' ? '#5771ac' :
+                       place.category === 'brand_fashion' ? '#ce9494' : '#af82d7',
+          strokeWeight: 2.5
+        }
+      });
+
+      marker.addListener('click', () => {
+        selectPlace(place.id, true);
+      });
+
+      googleMarkers.push(marker);
+    });
   }
 
   function selectPlace(placeId, shouldFly = false) {
@@ -134,37 +269,53 @@ const MapEngine = (() => {
     const place = allPlaces.find(p => p.id === placeId);
     if (!place) return;
 
-    // Re-render markers to update active styling
     renderMarkers();
 
-    // Fly camera smoothly to location
-    if (shouldFly && map) {
-      map.flyTo([place.coordinates.lat, place.coordinates.lng], 15.5, {
-        duration: 1.2,
-        easeLinearity: 0.25
-      });
+    if (shouldFly) {
+      if (currentEngine === 'google' && googleMap) {
+        googleMap.panTo({ lat: place.coordinates.lat, lng: place.coordinates.lng });
+        googleMap.setZoom(15);
+      } else if (map) {
+        map.flyTo([place.coordinates.lat, place.coordinates.lng], 15.5, {
+          duration: 1.2,
+          easeLinearity: 0.25
+        });
+      }
     }
 
-    // Open Dossier Drawer
-    if (window.DossierManager) {
-      window.DossierManager.show(place);
+    if (window.DossierModal) {
+      window.DossierModal.show(place);
     }
   }
 
-  function setCategoryFilter(category) {
-    activeFilter = category;
+  function toggleCategory(category) {
+    if (activeCategories.has(category)) {
+      if (activeCategories.size > 1) {
+        activeCategories.delete(category);
+      } else {
+        // If it's the last one, reset all
+        activeCategories = new Set(['cafe', 'heritage_icon', 'design_studio', 'art_culture', 'brand_fashion', 'coworking_maker']);
+      }
+    } else {
+      activeCategories.add(category);
+    }
     renderMarkers();
   }
 
-  function setZoneFilter(zoneKey) {
+  function setZone(zoneKey) {
     activeZone = zoneKey;
     const preset = ZONE_PRESETS[zoneKey] || ZONE_PRESETS.all;
-    if (map) {
+
+    if (currentEngine === 'google' && googleMap) {
+      googleMap.panTo({ lat: preset.coords[0], lng: preset.coords[1] });
+      googleMap.setZoom(preset.zoom);
+    } else if (map) {
       map.flyTo(preset.coords, preset.zoom, {
         duration: 1.4,
         easeLinearity: 0.25
       });
     }
+
     renderMarkers();
   }
 
@@ -173,74 +324,46 @@ const MapEngine = (() => {
     renderMarkers();
   }
 
-  function updateCounters(visibleCount) {
-    const counterEl = document.getElementById('visible-count');
-    if (counterEl) {
-      counterEl.textContent = `${visibleCount} of ${allPlaces.length} mapped`;
+  function updateCount(count) {
+    const el = document.getElementById('filters-count-num');
+    if (el) el.textContent = `${count} of ${allPlaces.length}`;
+  }
+
+  function updateEngineBadge() {
+    const badge = document.getElementById('engine-status-badge');
+    if (badge) {
+      badge.textContent = currentEngine === 'google' ? 'ENGINE: GOOGLE MAPS API' : 'ENGINE: DARK CANVAS';
     }
   }
 
-  function bindEvents() {
-    // Area Pills
-    document.querySelectorAll('.area-pill').forEach(pill => {
-      pill.addEventListener('click', (e) => {
-        document.querySelectorAll('.area-pill').forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        const zone = pill.getAttribute('data-zone');
-        setZoneFilter(zone);
+  function bindFilterEvents() {
+    // Checkbox category filters (Exact La Gata Perduda behavior)
+    document.querySelectorAll('.filter-item-wrapper input[type="checkbox"]').forEach(input => {
+      input.addEventListener('change', (e) => {
+        const cat = e.target.getAttribute('data-cat');
+        toggleCategory(cat);
       });
     });
 
-    // Category Pills
-    document.querySelectorAll('.cat-pill').forEach(pill => {
-      pill.addEventListener('click', (e) => {
-        document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
-        pill.classList.add('active');
-        const cat = pill.getAttribute('data-cat');
-        setCategoryFilter(cat);
+    // Zone pills
+    document.querySelectorAll('.zone-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.zone-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const zone = btn.getAttribute('data-zone');
+        setZone(zone);
       });
     });
-
-    // Search Input
-    const searchInput = document.getElementById('search-input');
-    const searchClear = document.getElementById('search-clear');
-
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        const val = e.target.value;
-        setSearch(val);
-        if (searchClear) {
-          if (val.length > 0) searchClear.classList.add('active');
-          else searchClear.classList.remove('active');
-        }
-      });
-    }
-
-    if (searchClear) {
-      searchClear.addEventListener('click', () => {
-        if (searchInput) {
-          searchInput.value = '';
-          setSearch('');
-          searchClear.classList.remove('active');
-          searchInput.focus();
-        }
-      });
-    }
-  }
-
-  function addPlace(newPlace) {
-    allPlaces.push(newPlace);
-    renderMarkers();
-    selectPlace(newPlace.id, true);
   }
 
   return {
     init,
     selectPlace,
-    setCategoryFilter,
-    setZoneFilter,
+    toggleCategory,
+    setZone,
     setSearch,
-    addPlace,
+    setGoogleMapsApiKey,
+    onGoogleMapsLoaded,
     getAllPlaces: () => allPlaces
   };
 })();

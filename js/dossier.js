@@ -1,70 +1,83 @@
 /* ==========================================================================
-   DECCAN CANVAS — Deep Dossier & Contact Drawer Manager
-   Complete Contact Details, 1-Click WhatsApp/Call, vCard Export & Directions
+   DECCAN CANVAS — Detail Modal & Contact Dossier
+   Styling: Exactly matching https://lagataperduda.com/en/mapa/ modal-bg
+   Radial Color Mesh Glow, 1-Click WhatsApp/Call, vCard & Google Maps Embed
    ========================================================================== */
 
-const DossierManager = (() => {
-  let drawerEl = null;
+const DossierModal = (() => {
+  let modalEl = null;
   let currentPlace = null;
 
+  const COLOR_MAP = {
+    cafe: 'green',
+    heritage_icon: 'yellow',
+    design_studio: 'orange',
+    art_culture: 'blue',
+    brand_fashion: 'pink',
+    coworking_maker: 'blue'
+  };
+
   function init() {
-    drawerEl = document.getElementById('dossier-drawer');
-    const closeBtn = document.getElementById('dossier-close-btn');
+    modalEl = document.getElementById('lgp-modal');
+    const closeBtn = document.getElementById('lgp-modal-close');
 
     if (closeBtn) {
       closeBtn.addEventListener('click', hide);
     }
 
-    // Escape key closes drawer
+    if (modalEl) {
+      modalEl.addEventListener('click', (e) => {
+        if (e.target === modalEl) hide();
+      });
+    }
+
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') hide();
     });
   }
 
   function show(place) {
-    if (!drawerEl) init();
+    if (!modalEl) init();
     currentPlace = place;
 
-    // Populate drawer elements
-    document.getElementById('dossier-category').textContent = place.category_label;
-    document.getElementById('dossier-category').className = `category-tag ${place.category}`;
-    document.getElementById('dossier-price').textContent = place.price_tier || '₹₹';
-    document.getElementById('dossier-status').textContent = place.hiring_status || 'Walk-ins Welcome';
-    document.getElementById('dossier-title').textContent = place.name;
-    document.getElementById('dossier-tagline').textContent = place.tagline;
+    const colorName = COLOR_MAP[place.category] || 'green';
+    const modalBg = document.getElementById('modal-bg-glow');
+    if (modalBg) {
+      modalBg.setAttribute('data-color', colorName);
+    }
 
-    // Person of Contact Meta
+    // Header info
+    const catEl = document.getElementById('modal-category');
+    if (catEl) {
+      catEl.textContent = place.category_label;
+      catEl.style.color = `rgb(var(--c-${colorName}))`;
+      catEl.style.borderColor = `rgb(var(--c-${colorName}))`;
+    }
+
+    document.getElementById('modal-title').textContent = place.name;
+    document.getElementById('modal-tagline').textContent = place.tagline;
+
+    // Contact Dossier
     const personName = place.contacts.primary_person || place.name;
     const personRole = place.contacts.primary_role || 'Founder & Director';
     const cleanPhone = (place.contacts.phone || '').replace(/[^0-9+]/g, '');
     const cleanWhatsapp = (place.contacts.whatsapp || cleanPhone).replace(/[^0-9]/g, '');
     const email = place.contacts.email || '';
-    const instagram = place.contacts.instagram || '';
-    const instagramUrl = place.contacts.instagram_url || `https://instagram.com/${instagram.replace('@', '')}`;
-    const website = place.contacts.website || '#';
+    const instaHandle = (place.contacts.instagram || '').replace('@', '');
+    const instaUrl = place.contacts.instagram_url || `https://instagram.com/${instaHandle}`;
 
-    // Initials for avatar
-    const initials = personName
-      .split(' ')
-      .slice(0, 2)
-      .map(n => n[0])
-      .join('')
-      .toUpperCase();
+    document.getElementById('modal-person-name').textContent = personName;
+    document.getElementById('modal-person-role').textContent = personRole;
 
-    document.getElementById('contact-avatar-text').textContent = initials;
-    document.getElementById('contact-person-name').textContent = personName;
-    document.getElementById('contact-person-role').textContent = personRole;
+    // Buttons
+    const waBtn = document.getElementById('modal-btn-whatsapp');
+    const callBtn = document.getElementById('modal-btn-call');
+    const emailBtn = document.getElementById('modal-btn-email');
+    const instaBtn = document.getElementById('modal-btn-instagram');
 
-    // Contact Action Triggers
-    const whatsappBtn = document.getElementById('contact-action-whatsapp');
-    const callBtn = document.getElementById('contact-action-call');
-    const emailBtn = document.getElementById('contact-action-email');
-    const instaBtn = document.getElementById('contact-action-insta');
-
-    if (whatsappBtn) {
-      const waMsg = encodeURIComponent(`Hi ${personName}, discovering ${place.name} on Deccan Canvas Hyderabad. Connecting regarding:`);
-      whatsappBtn.href = `https://wa.me/${cleanWhatsapp}?text=${waMsg}`;
-      whatsappBtn.target = '_blank';
+    if (waBtn) {
+      const msg = encodeURIComponent(`Hi ${personName}, discovering ${place.name} on Deccan Canvas Hyderabad. Connecting regarding:`);
+      waBtn.href = `https://wa.me/${cleanWhatsapp}?text=${msg}`;
     }
 
     if (callBtn) {
@@ -72,112 +85,90 @@ const DossierManager = (() => {
     }
 
     if (emailBtn) {
-      const emailSubject = encodeURIComponent(`Inquiry via Deccan Canvas: ${place.name}`);
-      emailBtn.href = `mailto:${email}?subject=${emailSubject}`;
+      emailBtn.href = `mailto:${email}?subject=${encodeURIComponent(`Deccan Canvas Inquiry: ${place.name}`)}`;
     }
 
     if (instaBtn) {
-      instaBtn.href = instagramUrl;
-      instaBtn.target = '_blank';
+      instaBtn.href = instaUrl;
     }
 
     // Secondary Person
-    const secondaryEl = document.getElementById('contact-secondary-person');
-    if (secondaryEl) {
+    const secEl = document.getElementById('modal-secondary-person');
+    if (secEl) {
       if (place.contacts.secondary_person) {
-        secondaryEl.textContent = place.contacts.secondary_person;
-        secondaryEl.parentElement.style.display = 'flex';
+        secEl.textContent = place.contacts.secondary_person;
+        secEl.style.display = 'block';
       } else {
-        secondaryEl.parentElement.style.display = 'none';
+        secEl.style.display = 'none';
       }
     }
 
-    // Copy Contact Details Button
-    const copyBtn = document.getElementById('copy-contact-btn');
+    // Copy Contact Details
+    const copyBtn = document.getElementById('modal-copy-contact-btn');
     if (copyBtn) {
-      copyBtn.onclick = () => copyContactToClipboard(place);
+      copyBtn.onclick = () => copyContact(place);
     }
 
-    // Export vCard Button
-    const vcardBtn = document.getElementById('download-vcard-btn');
+    // Save vCard
+    const vcardBtn = document.getElementById('modal-download-vcard-btn');
     if (vcardBtn) {
       vcardBtn.onclick = () => downloadVCard(place);
     }
 
-    // About Prose
-    document.getElementById('dossier-about-text').textContent = place.dossier.about;
+    // About Prose & Insider Tip
+    document.getElementById('modal-about-text').textContent = place.dossier.about;
+    document.getElementById('modal-tip-text').textContent = place.dossier.insider_tip;
 
-    // Insider Tip
-    document.getElementById('dossier-tip-text').textContent = place.dossier.insider_tip;
+    // Meta Grid
+    document.getElementById('modal-address').textContent = place.address;
+    document.getElementById('modal-hours').textContent = place.hours;
+    document.getElementById('modal-peak').textContent = place.peak_creative_hours || 'Afternoon';
+    document.getElementById('modal-pricing').textContent = place.price_tier || '₹₹';
 
-    // Vibe Tags
-    const vibeContainer = document.getElementById('dossier-vibe-tags');
-    if (vibeContainer) {
-      vibeContainer.innerHTML = place.vibe_tags
-        .map(tag => `<span class="vibe-tag">#${tag}</span>`)
-        .join('');
-    }
-
-    // Details Table
-    document.getElementById('dossier-address-text').textContent = place.address;
-    document.getElementById('dossier-hours-text').textContent = place.hours;
-    document.getElementById('dossier-peak-text').textContent = place.peak_creative_hours || 'Afternoon & Sunset';
-
-    // Directions Links (Google & Apple Maps)
+    // Google Maps Navigation Deep Links
     const lat = place.coordinates.lat;
     const lng = place.coordinates.lng;
-    const gmapsLink = document.getElementById('directions-google-maps');
-    const amapsLink = document.getElementById('directions-apple-maps');
+    const gmapsLink = document.getElementById('modal-gmaps-link');
+    const amapsLink = document.getElementById('modal-amaps-link');
 
     if (gmapsLink) {
       gmapsLink.href = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-      gmapsLink.target = '_blank';
     }
     if (amapsLink) {
       amapsLink.href = `https://maps.apple.com/?q=${encodeURIComponent(place.name)}&ll=${lat},${lng}`;
-      amapsLink.target = '_blank';
     }
 
-    // Amenities
-    const amenitiesContainer = document.getElementById('dossier-amenities');
-    if (amenitiesContainer && place.dossier.amenities) {
-      amenitiesContainer.innerHTML = place.dossier.amenities
-        .map(am => `<span class="status-badge">✓ ${am}</span>`)
-        .join('');
+    // Google Maps Location Embed Preview
+    const embedIframe = document.getElementById('modal-gmaps-iframe');
+    if (embedIframe) {
+      embedIframe.src = `https://maps.google.com/maps?q=${lat},${lng}&t=m&z=15&output=embed&iwloc=near`;
     }
 
-    // Latest Live Drop
-    const dropCard = document.getElementById('dossier-live-drop-card');
+    // Live Drop in Modal
+    const dropCard = document.getElementById('modal-drop-card');
     if (dropCard) {
       if (place.latest_drop) {
-        dropCard.style.display = 'flex';
-        document.getElementById('drop-card-badge').textContent = place.latest_drop.type || 'LIVE DROP';
-        document.getElementById('drop-card-time').textContent = place.latest_drop.timestamp || 'Recent';
-        document.getElementById('drop-card-title').textContent = place.latest_drop.title;
-        document.getElementById('drop-card-snippet').textContent = place.latest_drop.snippet;
+        dropCard.style.display = 'block';
+        document.getElementById('modal-drop-title').textContent = place.latest_drop.title;
+        document.getElementById('modal-drop-snippet').textContent = place.latest_drop.snippet;
       } else {
         dropCard.style.display = 'none';
       }
     }
 
-    // Close Radar if open
-    if (window.RadarManager) window.RadarManager.hide();
-
-    // Slide drawer open
-    drawerEl.classList.add('open');
+    modalEl.classList.add('open');
   }
 
   function hide() {
-    if (drawerEl) drawerEl.classList.remove('open');
+    if (modalEl) modalEl.classList.remove('open');
     currentPlace = null;
   }
 
-  function copyContactToClipboard(place) {
+  function copyContact(place) {
     const text = `
 ${place.name} [${place.category_label}]
-Neighborhood: ${place.neighborhood}
 Address: ${place.address}
-Contact Person: ${place.contacts.primary_person} (${place.contacts.primary_role})
+Contact: ${place.contacts.primary_person} (${place.contacts.primary_role})
 Phone: ${place.contacts.phone}
 WhatsApp: ${place.contacts.whatsapp}
 Email: ${place.contacts.email}
@@ -185,19 +176,15 @@ Instagram: ${place.contacts.instagram}
 Website: ${place.contacts.website}
 Hours: ${place.hours}
 ---
-Curated on Deccan Canvas · Hyderabad Creative Map
+Deccan Canvas · Hyderabad Creative Cartography
     `.trim();
 
     navigator.clipboard.writeText(text).then(() => {
-      const copyBtn = document.getElementById('copy-contact-btn');
-      if (copyBtn) {
-        const orig = copyBtn.innerHTML;
-        copyBtn.innerHTML = `✓ Copied to Clipboard!`;
-        copyBtn.style.color = 'var(--accent-cafe)';
-        setTimeout(() => {
-          copyBtn.innerHTML = orig;
-          copyBtn.style.color = '';
-        }, 2200);
+      const btn = document.getElementById('modal-copy-contact-btn');
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = '✓ COPIED';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
       }
     });
   }
@@ -235,9 +222,8 @@ END:VCARD`;
   return {
     init,
     show,
-    hide,
-    getCurrentPlace: () => currentPlace
+    hide
   };
 })();
 
-window.DossierManager = DossierManager;
+window.DossierModal = DossierModal;

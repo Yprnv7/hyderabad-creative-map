@@ -118,7 +118,7 @@ const RadarManager = (() => {
 
   function show() {
     if (drawerEl) {
-      if (window.DossierManager) window.DossierManager.hide();
+      if (window.DossierModal) window.DossierModal.hide();
       drawerEl.classList.add('open');
       const toggleBtn = document.getElementById('radar-toggle-btn');
       if (toggleBtn) toggleBtn.classList.add('active');
